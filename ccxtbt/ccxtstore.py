@@ -30,6 +30,7 @@ import ccxt
 from backtrader.metabase import MetaParams
 from backtrader.utils.py3 import with_metaclass
 from ccxt.base.errors import NetworkError, ExchangeError
+from requests import HTTPError
 
 
 class MetaSingleton(MetaParams):
@@ -146,7 +147,7 @@ class CCXTStore(with_metaclass(MetaSingleton, object)):
                 time.sleep(self.exchange.rateLimit / 1000)
                 try:
                     return method(self, *args, **kwargs)
-                except (NetworkError, ExchangeError):
+                except (NetworkError, ExchangeError, HTTPError):
                     if i == self.retries - 1:
                         raise
 
