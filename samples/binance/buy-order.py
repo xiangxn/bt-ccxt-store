@@ -1,3 +1,5 @@
+import sys
+sys.path.append(".")
 import json
 import os
 import time
@@ -23,9 +25,9 @@ class TestStrategy(bt.Strategy):
             # Buy
             # size x price should be >10 USDT at a minimum at Binance
             # make sure you use a price that is below the market price if you don't want to actually buy
-            self.order = self.buy(size=2.0, exectype=Order.Limit, price=5.4326)
+            # self.order = self.buy(size=2.0, exectype=Order.Limit, price=5.4326)
             # And immediately cancel the buy order
-            self.cancel(self.order);
+            # self.cancel(self.order)
             self.bought = True
 
         for data in self.datas:
@@ -46,9 +48,11 @@ class TestStrategy(bt.Strategy):
 
 # absolute dir the script is in
 script_dir = os.path.dirname(__file__)
-abs_file_path = os.path.join(script_dir, '../params.json')
+abs_file_path = os.path.join(script_dir, '../../params.json')
 with open(abs_file_path, 'r') as f:
     params = json.load(f)
+    
+print("params:",params)
 
 cerebro = bt.Cerebro(quicknotify=True)
 
@@ -62,9 +66,10 @@ config = {'apiKey': params["binance"]["apikey"],
           'secret': params["binance"]["secret"],
           'enableRateLimit': True,
           'nonce': lambda: str(int(time.time() * 1000)),
+          'proxies':{ 'https': "http://127.0.0.1:8001", 'http': "http://127.0.0.1:8001"}
           }
 
-store = CCXTStore(exchange='binance', currency='BNB', config=config, retries=5, debug=True)
+store = CCXTStore(exchange='binance', currency='USDT', config=config, retries=5, debug=True)
 
 # Get the broker and pass any kwargs if needed.
 # ----------------------------------------------
@@ -96,7 +101,7 @@ cerebro.setbroker(broker)
 # Get our data
 # Drop newest will prevent us from loading partial data from incomplete candles
 hist_start_date = datetime.utcnow() - timedelta(minutes=50)
-data = store.getdata(dataname='BNB/USDT', name="BNBUSDT",
+data = store.getdata(dataname='BTC/USDT', name="BTCUSDT",
                      timeframe=bt.TimeFrame.Minutes, fromdate=hist_start_date,
                      compression=1, ohlcv_limit=50, drop_newest=True)  # , historical=True)
 

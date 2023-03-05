@@ -1,3 +1,5 @@
+import sys
+sys.path.append(".")
 import time
 from datetime import datetime
 
@@ -21,18 +23,20 @@ def main():
     cerebro.addstrategy(TestStrategy)
 
     # Add the feed
-    cerebro.adddata(CCXTFeed(exchange='binance',
+    cerebro.adddata(CCXTFeed(
+                            debug=True,
+                            exchange='binance',
                              dataname='BNB/USDT',
                              timeframe=bt.TimeFrame.Minutes,
-                             fromdate=datetime(2019, 1, 1, 0, 0),
-                             todate=datetime(2019, 1, 1, 0, 2),
-                             compression=1,
+                            #  fromdate=datetime(2019, 1, 1, 0, 0),
+                            #  todate=datetime(2019, 1, 1, 0, 2),
+                             compression=5,
                              ohlcv_limit=2,
                              currency='BNB',
                              retries=5,
 
                              # 'apiKey' and 'secret' are skipped
-                             config={'enableRateLimit': True, 'nonce': lambda: str(int(time.time() * 1000))}))
+                             config={'proxies':{ 'https': "http://127.0.0.1:8001", 'http': "http://127.0.0.1:8001"},'enableRateLimit': True, 'nonce': lambda: str(int(time.time() * 1000))}))
 
     # Run the strategy
     cerebro.run()
