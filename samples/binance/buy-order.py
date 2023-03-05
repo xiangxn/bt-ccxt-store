@@ -69,7 +69,7 @@ config = {'apiKey': params["binance"]["apikey"],
           'proxies':{ 'https': "http://127.0.0.1:8001", 'http': "http://127.0.0.1:8001"}
           }
 
-store = CCXTStore(exchange='binance', currency='USDT', config=config, retries=5, debug=True)
+store = CCXTStore(exchange='binance', currency='BTC', config=config, retries=5, debug=True)
 
 # Get the broker and pass any kwargs if needed.
 # ----------------------------------------------
@@ -103,7 +103,7 @@ cerebro.setbroker(broker)
 hist_start_date = datetime.utcnow() - timedelta(minutes=50)
 data = store.getdata(dataname='BTC/USDT', name="BTCUSDT",
                      timeframe=bt.TimeFrame.Minutes, fromdate=hist_start_date,
-                     compression=1, ohlcv_limit=50, drop_newest=True)  # , historical=True)
+                     compression=5, ohlcv_limit=50, drop_newest=True)  # , historical=True)
 
 # Add the feed
 cerebro.adddata(data)
