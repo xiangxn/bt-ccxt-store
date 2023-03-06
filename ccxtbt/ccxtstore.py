@@ -163,9 +163,8 @@ class CCXTStore(with_metaclass(MetaSingleton, object)):
         return self._cash, self._value
 
     @retry
-    def getposition(self):
-        return self._value
-        # return self.getvalue(currency)
+    def get_positions(self, symbols=None, params={}):
+        return self.exchange.fetch_positions(symbols, params)
 
     @retry
     def create_order(self, symbol, order_type, side, amount, price, params):

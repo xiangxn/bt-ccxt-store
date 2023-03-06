@@ -65,7 +65,10 @@ config = {
     'secret': params["binance"]["secret"],
     'enableRateLimit': True,
     'nonce': lambda: str(int(time.time() * 1000)),
-    'requests_trust_env': True
+    'requests_trust_env': True,
+    'options': {
+        'fetchPositions': "account"
+    }
 }
 
 store = CCXTStore(exchange='binance', currency='USDT', config=config, retries=5, debug=True)

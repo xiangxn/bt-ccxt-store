@@ -105,6 +105,10 @@ class CCXTBroker(with_metaclass(MetaCCXTBroker, BrokerBase)):
 
     mappings = { 'closed_order': { 'key': 'status', 'value': 'closed'}, 'canceled_order': { 'key': 'status', 'value': 'canceled'} }
 
+    params = (
+        ('use_positions', False),
+    )
+
     def __init__(self, broker_mapping=None, debug=False, **kwargs):
         super(CCXTBroker, self).__init__()
 
@@ -135,6 +139,13 @@ class CCXTBroker(with_metaclass(MetaCCXTBroker, BrokerBase)):
         self.startingvalue = self.store._value
 
         self.use_order_params = True
+
+    def start(self):
+        super(CCXTBroker, self).start()
+
+        if self.p.use_positions:
+            for p in self.store.get_positions():
+                print('position:', p)
 
     def get_balance(self, data=None):
         if data is None:
