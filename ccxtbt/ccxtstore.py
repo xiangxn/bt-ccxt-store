@@ -18,8 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ###############################################################################
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import time
 from datetime import datetime
@@ -42,8 +41,7 @@ class MetaSingleton(MetaParams):
 
     def __call__(cls, *args, **kwargs):
         if cls._singleton is None:
-            cls._singleton = (
-                super(MetaSingleton, cls).__call__(*args, **kwargs))
+            cls._singleton = (super(MetaSingleton, cls).__call__(*args, **kwargs))
 
         return cls._singleton
 
@@ -109,7 +107,7 @@ class CCXTStore(with_metaclass(MetaSingleton, object)):
                 self._cash = 0
             else:
                 self._cash = balance['free'][currency]
-        except KeyError:  # never funded or eg. all USD exchanged 
+        except KeyError:  # never funded or eg. all USD exchanged
             self._cash = 0
         try:
             if balance == 0 or not balance['total'][currency]:
@@ -137,6 +135,7 @@ class CCXTStore(with_metaclass(MetaSingleton, object)):
         return granularity
 
     def retry(method):
+
         @wraps(method)
         def retry_method(self, *args, **kwargs):
             for i in range(self.retries):
@@ -152,19 +151,16 @@ class CCXTStore(with_metaclass(MetaSingleton, object)):
         return retry_method
 
     @retry
-    def get_wallet_balance(self, currency, params=None):
+    def get_balance(self, symbol=None, params={}):
         balance = self.exchange.fetch_balance(params)
-        return balance
-
-    @retry
-    def get_balance(self):
-        balance = self.exchange.fetch_balance()
-
+        if symbol is None:
+            symbol = self.currency
         cash = balance['free'][self.currency]
-        value = balance['total'][self.currency]
+        value = balance['total'][symbol]
         # Fix if None is returned
         self._cash = cash if cash else 0
         self._value = value if value else 0
+        return self._cash, self._value
 
     @retry
     def getposition(self):
@@ -174,8 +170,7 @@ class CCXTStore(with_metaclass(MetaSingleton, object)):
     @retry
     def create_order(self, symbol, order_type, side, amount, price, params):
         # returns the order
-        return self.exchange.create_order(symbol=symbol, type=order_type, side=side,
-                                          amount=amount, price=price, params=params)
+        return self.exchange.create_order(symbol=symbol, type=order_type, side=side, amount=amount, price=price, params=params)
 
     @retry
     def cancel_order(self, order_id, symbol):

@@ -19,7 +19,7 @@ class TestStrategy(bt.Strategy):
         # NOTE: If you try to get the wallet balance from a wallet you have
         # never funded, a KeyError will be raised! Change LTC below as approriate
         if self.live_data:
-            cash, value = self.broker.get_wallet_balance('LTC')
+            cash, value = self.broker.get_balance()
         else:
             # Avoid checking the balance during a backfill. Otherwise, it will
             # Slow things down.

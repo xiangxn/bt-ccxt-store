@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append(".")
 import json
 import os
@@ -20,7 +21,7 @@ class TestStrategy(bt.Strategy):
         self.order = None
 
     def next(self):
-
+        cash, value = self.broker.get_balance(self.data0)
         if self.live_data and not self.bought:
             # Buy
             # size x price should be >10 USDT at a minimum at Binance
@@ -31,9 +32,8 @@ class TestStrategy(bt.Strategy):
             self.bought = True
 
         for data in self.datas:
-            print('{} - {} | O: {} H: {} L: {} C: {} V:{}'.format(data.datetime.datetime(),
-                                                                  data._name, data.open[0], data.high[0], data.low[0],
-                                                                  data.close[0], data.volume[0]))
+            print('{} - {} | O: {} H: {} L: {} C: {} V:{} Cash:{} Value:{}'.format(data.datetime.datetime(), data._name, data.open[0], data.high[0],
+                                                                                   data.low[0], data.close[0], data.volume[0], cash, value))
 
     def notify_data(self, data, status, *args, **kwargs):
         dn = data._name
@@ -51,8 +51,6 @@ script_dir = os.path.dirname(__file__)
 abs_file_path = os.path.join(script_dir, '../../params.json')
 with open(abs_file_path, 'r') as f:
     params = json.load(f)
-    
-print("params:",params)
 
 cerebro = bt.Cerebro(quicknotify=True)
 
@@ -62,14 +60,15 @@ cerebro.broker.setcash(10.0)
 cerebro.addstrategy(TestStrategy)
 
 # Create our store
-config = {'apiKey': params["binance"]["apikey"],
-          'secret': params["binance"]["secret"],
-          'enableRateLimit': True,
-          'nonce': lambda: str(int(time.time() * 1000)),
-          'proxies':{ 'https': "http://127.0.0.1:8001", 'http': "http://127.0.0.1:8001"}
-          }
+config = {
+    'apiKey': params["binance"]["apikey"],
+    'secret': params["binance"]["secret"],
+    'enableRateLimit': True,
+    'nonce': lambda: str(int(time.time() * 1000)),
+    'requests_trust_env': True
+}
 
-store = CCXTStore(exchange='binance', currency='BTC', config=config, retries=5, debug=True)
+store = CCXTStore(exchange='binance', currency='USDT', config=config, retries=5, debug=True)
 
 # Get the broker and pass any kwargs if needed.
 # ----------------------------------------------
@@ -101,9 +100,13 @@ cerebro.setbroker(broker)
 # Get our data
 # Drop newest will prevent us from loading partial data from incomplete candles
 hist_start_date = datetime.utcnow() - timedelta(minutes=50)
-data = store.getdata(dataname='BTC/USDT', name="BTCUSDT",
-                     timeframe=bt.TimeFrame.Minutes, fromdate=hist_start_date,
-                     compression=5, ohlcv_limit=50, drop_newest=True)  # , historical=True)
+data = store.getdata(dataname='BTC/USDT',
+                     name="BTCUSDT",
+                     timeframe=bt.TimeFrame.Minutes,
+                     fromdate=hist_start_date,
+                     compression=5,
+                     ohlcv_limit=50,
+                     drop_newest=True)  # , historical=True)
 
 # Add the feed
 cerebro.adddata(data)

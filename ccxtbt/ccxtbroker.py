@@ -18,8 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ###############################################################################
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import collections
 import json
@@ -32,6 +31,7 @@ from .ccxtstore import CCXTStore
 
 
 class CCXTOrder(OrderBase):
+
     def __init__(self, owner, data, ccxt_order):
         self.owner = owner
         self.data = data
@@ -44,6 +44,7 @@ class CCXTOrder(OrderBase):
 
 
 class MetaCCXTBroker(BrokerBase.__class__):
+
     def __init__(cls, name, bases, dct):
         '''Class has already been created ... register'''
         # Initialize the class
@@ -95,20 +96,14 @@ class CCXTBroker(with_metaclass(MetaCCXTBroker, BrokerBase)):
 
     '''
 
-    order_types = {Order.Market: 'market',
-                   Order.Limit: 'limit',
-                   Order.Stop: 'stop',  # stop-loss for kraken, stop for bitmex
-                   Order.StopLimit: 'stop limit'}
-
-    mappings = {
-        'closed_order': {
-            'key': 'status',
-            'value': 'closed'
-        },
-        'canceled_order': {
-            'key': 'status',
-            'value': 'canceled'}
+    order_types = {
+        Order.Market: 'market',
+        Order.Limit: 'limit',
+        Order.Stop: 'stop',  # stop-loss for kraken, stop for bitmex
+        Order.StopLimit: 'stop limit'
     }
+
+    mappings = { 'closed_order': { 'key': 'status', 'value': 'closed'}, 'canceled_order': { 'key': 'status', 'value': 'canceled'} }
 
     def __init__(self, broker_mapping=None, debug=False, **kwargs):
         super(CCXTBroker, self).__init__()
@@ -141,23 +136,15 @@ class CCXTBroker(with_metaclass(MetaCCXTBroker, BrokerBase)):
 
         self.use_order_params = True
 
-    def get_balance(self):
-        self.store.get_balance()
+    def get_balance(self, data=None):
+        if data is None:
+            self.store.get_balance()
+        else:
+            vn = data.p.dataname.replace(self.currency, "").replace("/", "")
+            self.store.get_balance(vn)
         self.cash = self.store._cash
         self.value = self.store._value
         return self.cash, self.value
-
-    def get_wallet_balance(self, currency, params={}):
-        balance = self.store.get_wallet_balance(currency, params=params)
-        try:
-            cash = balance['free'][currency] if balance['free'][currency] else 0
-        except KeyError:  # never funded or eg. all USD exchanged
-            cash = 0
-        try:
-            value = balance['total'][currency] if balance['total'][currency] else 0
-        except KeyError:  # never funded or eg. all USD exchanged
-            value = 0
-        return cash, value
 
     def getcash(self):
         # Get cash seems to always be called before get value
@@ -206,11 +193,7 @@ class CCXTBroker(with_metaclass(MetaCCXTBroker, BrokerBase)):
             if 'trades' in ccxt_order and ccxt_order['trades'] is not None:
                 for fill in ccxt_order['trades']:
                     if fill not in o_order.executed_fills:
-                        o_order.execute(fill['datetime'], fill['amount'], fill['price'],
-                                        0, 0.0, 0.0,
-                                        0, 0.0, 0.0,
-                                        0.0, 0.0,
-                                        0, 0.0)
+                        o_order.execute(fill['datetime'], fill['amount'], fill['price'], 0, 0.0, 0.0, 0, 0.0, 0.0, 0.0, 0.0, 0, 0.0)
                         o_order.executed_fills.append(fill['id'])
 
             if self.debug:
@@ -222,8 +205,8 @@ class CCXTBroker(with_metaclass(MetaCCXTBroker, BrokerBase)):
                 pos.update(o_order.size, o_order.price)
                 o_order.completed()
                 self.notify(o_order)
+                self.get_balance(o_order.data)
                 self.open_orders.remove(o_order)
-                self.get_balance()
 
             # Manage case when an order is being Canceled from the Exchange
             #  from https://github.com/juancols/bt-ccxt-store/
@@ -234,21 +217,19 @@ class CCXTBroker(with_metaclass(MetaCCXTBroker, BrokerBase)):
 
     def _submit(self, owner, data, exectype, side, amount, price, params):
         if amount == 0 or price == 0:
-        # do not allow failing orders
+            # do not allow failing orders
             return None
         order_type = self.order_types.get(exectype) if exectype else 'market'
-        created = int(data.datetime.datetime(0).timestamp()*1000)
+        created = int(data.datetime.datetime(0).timestamp() * 1000)
         # Extract CCXT specific params if passed to the order
         params = params['params'] if 'params' in params else params
         if not self.use_order_params:
-            ret_ord = self.store.create_order(symbol=data.p.dataname, order_type=order_type, side=side,
-                                              amount=amount, price=price, params={})
+            ret_ord = self.store.create_order(symbol=data.p.dataname, order_type=order_type, side=side, amount=amount, price=price, params={})
         else:
             try:
                 # all params are exchange specific: https://github.com/ccxt/ccxt/wiki/Manual#custom-order-params
                 params['created'] = created  # Add timestamp of order creation for backtesting
-                ret_ord = self.store.create_order(symbol=data.p.dataname, order_type=order_type, side=side,
-                                                  amount=amount, price=price, params=params)
+                ret_ord = self.store.create_order(symbol=data.p.dataname, order_type=order_type, side=side, amount=amount, price=price, params=params)
             except:
                 # save some API calls after failure
                 self.use_order_params = False
@@ -263,18 +244,12 @@ class CCXTBroker(with_metaclass(MetaCCXTBroker, BrokerBase)):
         self.notify(order)
         return order
 
-    def buy(self, owner, data, size, price=None, plimit=None,
-            exectype=None, valid=None, tradeid=0, oco=None,
-            trailamount=None, trailpercent=None,
-            **kwargs):
+    def buy(self, owner, data, size, price=None, plimit=None, exectype=None, valid=None, tradeid=0, oco=None, trailamount=None, trailpercent=None, **kwargs):
         del kwargs['parent']
         del kwargs['transmit']
         return self._submit(owner, data, exectype, 'buy', size, price, kwargs)
 
-    def sell(self, owner, data, size, price=None, plimit=None,
-             exectype=None, valid=None, tradeid=0, oco=None,
-             trailamount=None, trailpercent=None,
-             **kwargs):
+    def sell(self, owner, data, size, price=None, plimit=None, exectype=None, valid=None, tradeid=0, oco=None, trailamount=None, trailpercent=None, **kwargs):
         del kwargs['parent']
         del kwargs['transmit']
         return self._submit(owner, data, exectype, 'sell', size, price, kwargs)
@@ -313,7 +288,7 @@ class CCXTBroker(with_metaclass(MetaCCXTBroker, BrokerBase)):
     def get_orders_open(self, safe=False):
         return self.store.fetch_open_orders()
 
-    def private_end_point(self, type, endpoint, params, prefix = ""):
+    def private_end_point(self, type, endpoint, params, prefix=""):
         '''
         Open method to allow calls to be made to any private end point.
         See here: https://github.com/ccxt/ccxt/wiki/Manual#implicit-api-methods
