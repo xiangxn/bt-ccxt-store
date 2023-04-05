@@ -30,7 +30,6 @@ from backtrader.metabase import MetaParams
 from backtrader.utils.py3 import with_metaclass
 from ccxt.base.errors import NetworkError, ExchangeError
 from requests import HTTPError
-import ccxt.pro as ccxtpro
 
 class MetaSingleton(MetaParams):
     '''Metaclass to make a metaclassed class a singleton'''
@@ -95,8 +94,7 @@ class CCXTStore(with_metaclass(MetaSingleton, object)):
         return cls.BrokerCls(*args, **kwargs)
 
     def __init__(self, exchange, currency, config, retries, debug=False, sandbox=False):
-        # self.exchange = getattr(ccxt, exchange)(config)
-        self.exchange = getattr(ccxtpro, exchange)(config)
+        self.exchange = getattr(ccxt, exchange)(config)
         if sandbox:
             self.exchange.set_sandbox_mode(True)
         self.currency = currency
