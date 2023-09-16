@@ -246,14 +246,27 @@ class CCXTBroker(with_metaclass(MetaCCXTBroker, BrokerBase)):
                 self.use_order_params = False
                 return None
 
-        _order = self.store.fetch_order(ret_ord['id'], data.p.dataname)
+        if ret_ord['status'] == "closed":
+            order = CCXTOrder(owner, data, ret_ord)
+            order.price = ret_ord['price']
+            order.execute(data.datetime[0], ret_ord['amount'], ret_ord['price'], 0, 0.0, 0.0, 0, 0.0, 0.0, 0.0, 0.0, 0, 0.0)
+            order.completed()
+            self.notify(order)
+            return order
+        elif ret_ord['status'] == "rejected":
+            order = CCXTOrder(owner, data, ret_ord)
+            order.reject()
+            self.notify(order)
+            return order
+        else:
+            _order = self.store.fetch_order(ret_ord['id'], data.p.dataname)
 
-        order = CCXTOrder(owner, data, _order)
-        order.price = ret_ord['price']
-        self.open_orders.append(order)
+            order = CCXTOrder(owner, data, _order)
+            order.price = _order['price']
+            self.open_orders.append(order)
 
-        self.notify(order)
-        return order
+            self.notify(order)
+            return order
 
     def buy(self, owner, data, size, price=None, plimit=None, exectype=None, valid=None, tradeid=0, oco=None, trailamount=None, trailpercent=None, **kwargs):
         del kwargs['parent']
