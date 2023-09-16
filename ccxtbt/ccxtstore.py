@@ -142,7 +142,10 @@ class CCXTStore(with_metaclass(MetaSingleton, object)):
         if symbol is None:
             symbol = self.currency
         cash = balance['free'][self.currency]
-        value = balance['total'][symbol]
+        if symbol in balance['total']:
+            value = balance['total'][symbol]
+        else:
+            value = 0
         # Fix if None is returned
         self._cash = cash if cash else 0
         self._value = value if value else 0
