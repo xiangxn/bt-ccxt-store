@@ -26,7 +26,7 @@ import json
 from backtrader import BrokerBase, OrderBase, Order
 from backtrader.position import Position
 from backtrader.utils.py3 import queue, with_metaclass
-
+from copy import copy
 from .ccxtstore import CCXTStore
 
 
@@ -42,6 +42,11 @@ class CCXTOrder(OrderBase):
         self.price = float(ccxt_order['price'])
 
         super(CCXTOrder, self).__init__()
+
+    def clone(self):
+        obj = super(CCXTOrder, self).clone()
+        obj.executed_fills = copy(self.executed_fills)
+        return obj
 
 
 class MetaCCXTBroker(BrokerBase.__class__):
@@ -106,9 +111,7 @@ class CCXTBroker(with_metaclass(MetaCCXTBroker, BrokerBase)):
 
     mappings = { 'closed_order': { 'key': 'status', 'value': 'closed'}, 'canceled_order': { 'key': 'status', 'value': 'canceled'} }
 
-    params = (
-        ('use_positions', False),
-    )
+    params = (('use_positions', False), )
 
     def __init__(self, broker_mapping=None, debug=False, **kwargs):
         super(CCXTBroker, self).__init__()
@@ -215,17 +218,23 @@ class CCXTBroker(with_metaclass(MetaCCXTBroker, BrokerBase)):
             if ccxt_order[self.mappings['closed_order']['key']] == self.mappings['closed_order']['value']:
                 pos = self.getposition(o_order.data, clone=False)
                 pos.update(o_order.size, o_order.price)
-                o_order.completed()
-                self.notify(o_order)
-                self.get_balance(o_order.data)
+                n_order = o_order.clone()
                 self.open_orders.remove(o_order)
+                if len(n_order.executed) == 0:
+                    n_order.execute(n_order.data.datetime[0], n_order.size, n_order.price, 0, 0.0, 0.0, 0, 0.0, 0.0, 0.0, 0.0, 0, 0.0)
+                n_order.ccxt_order = ccxt_order
+                n_order.completed()
+                self.notify(n_order)
+                self.get_balance(n_order.data)
+
 
             # Manage case when an order is being Canceled from the Exchange
             #  from https://github.com/juancols/bt-ccxt-store/
             if ccxt_order[self.mappings['canceled_order']['key']] == self.mappings['canceled_order']['value']:
+                n_order = o_order.clone()
                 self.open_orders.remove(o_order)
-                o_order.cancel()
-                self.notify(o_order)
+                n_order.cancel()
+                self.notify(n_order)
 
     def _submit(self, owner, data, exectype, side, amount, price, params):
         if amount == 0 or price == 0:
@@ -246,27 +255,11 @@ class CCXTBroker(with_metaclass(MetaCCXTBroker, BrokerBase)):
                 # save some API calls after failure
                 self.use_order_params = False
                 return None
-
-        if ret_ord['status'] == "closed":
-            order = CCXTOrder(owner, data, ret_ord)
-            pos = self.getposition(data, clone=False)
-            pos.update(order.size, order.price)
-            order.execute(data.datetime[0], ret_ord['amount'], ret_ord['price'], 0, 0.0, 0.0, 0, 0.0, 0.0, 0.0, 0.0, 0, 0.0)
-            order.completed()
-            self.notify(order)
-            self.get_balance(order.data)
-            return order
-        elif ret_ord['status'] == "rejected":
-            order = CCXTOrder(owner, data, ret_ord)
-            order.reject()
-            self.notify(order)
-            return order
-        else:
-            _order = self.store.fetch_order(ret_ord['id'], data.p.dataname)
-            order = CCXTOrder(owner, data, _order)
-            self.open_orders.append(order)
-            self.notify(order)
-            return order
+        _order = self.store.fetch_order(ret_ord['id'], data.p.dataname)
+        order = CCXTOrder(owner, data, _order)
+        self.open_orders.append(order)
+        self.notify(order)
+        return order
 
     def buy(self, owner, data, size, price=None, plimit=None, exectype=None, valid=None, tradeid=0, oco=None, trailamount=None, trailpercent=None, **kwargs):
         del kwargs['parent']
